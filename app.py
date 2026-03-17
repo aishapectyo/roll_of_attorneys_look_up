@@ -1,103 +1,44 @@
 """
-Legal Research Audit Trail
-Run: streamlit run audit_trail.py
+Ohio Supreme Court — Roll of Attorneys
+Patron lookup tool.
+
+Run with:
+    streamlit run app.py
+
+Expects all_attorneys_normalized.csv in the same directory,
+OR set DATA_PATH below to the full path.
 """
 
-import streamlit as st
-import json
 import os
-import io
-from datetime import datetime
-from reportlab.lib.pagesizes import letter
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.units import inch
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, HRFlowable
-from reportlab.lib import colors
+import streamlit as st
+import pandas as pd
 
-SESSION_FILE = "sessions.json"
-DATABASES = ["Westlaw", "HeinOnline", "Google Scholar", "Lexis+",
-             "Bloomberg Law", "Fastcase", "Other"]
+# ── CONFIG ────────────────────────────────────────────────────────────────────
 
-# ── Persistence ───────────────────────────────────────────────────────────────
-
-def load_sessions():
-    if os.path.exists(SESSION_FILE):
-        with open(SESSION_FILE) as f:
-            return json.load(f)
-    return {}
-
-def save_sessions(sessions):
-    with open(SESSION_FILE, "w") as f:
-        json.dump(sessions, f, indent=2)
-
-# ── PDF ───────────────────────────────────────────────────────────────────────
-
-def generate_pdf(session):
-    buffer = io.BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=letter,
-                            rightMargin=inch, leftMargin=inch,
-                            topMargin=inch, bottomMargin=inch)
-    styles = getSampleStyleSheet()
-    label_style = ParagraphStyle("Label", parent=styles["Normal"],
-                                 fontSize=8, textColor=colors.HexColor("#666666"),
-                                 spaceAfter=2)
-    value_style = ParagraphStyle("Value", parent=styles["Normal"],
-                                 fontSize=10, spaceAfter=8)
-    story = []
-    story.append(Paragraph("Legal Research Audit Trail", styles["Title"]))
-    story.append(Spacer(1, 8))
-    story.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor("#cccccc")))
-    story.append(Spacer(1, 14))
-    story.append(Paragraph("<b>Matter:</b> " + session["matter_name"], styles["Normal"]))
-    story.append(Spacer(1, 4))
-    story.append(Paragraph("<b>Research Question:</b> " + session["research_question"], styles["Normal"]))
-    story.append(Spacer(1, 4))
-    story.append(Paragraph("<b>Researcher:</b> " + session["researcher_name"], styles["Normal"]))
-    story.append(Spacer(1, 4))
-    story.append(Paragraph("<b>Started:</b> " + session["created"], styles["Normal"]))
-    story.append(Spacer(1, 4))
-    story.append(Paragraph("<b>Exported:</b> " + datetime.now().strftime("%Y-%m-%d %H:%M"), styles["Normal"]))
-    story.append(Spacer(1, 20))
-    story.append(HRFlowable(width="100%", thickness=0.5, color=colors.HexColor("#dddddd")))
-    story.append(Spacer(1, 16))
-    story.append(Paragraph("Search Log — " + str(len(session["entries"])) + " entries", styles["Heading2"]))
-    story.append(Spacer(1, 10))
-    for i, e in enumerate(session["entries"], 1):
-        story.append(Paragraph("Entry " + str(i) + " — " + e["timestamp"], styles["Heading3"]))
-        story.append(Paragraph("Database", label_style))
-        story.append(Paragraph(e["database"], value_style))
-        story.append(Paragraph("Search String", label_style))
-        story.append(Paragraph(e["search_string"], value_style))
-        story.append(Paragraph("Sources Found", label_style))
-        story.append(Paragraph(e["sources_found"] or "None noted", value_style))
-        story.append(Paragraph("Relevance Note", label_style))
-        story.append(Paragraph(e["relevance_note"] or "—", value_style))
-        story.append(HRFlowable(width="100%", thickness=0.5, color=colors.HexColor("#eeeeee")))
-        story.append(Spacer(1, 12))
-    doc.build(story)
-    buffer.seek(0)
-    return buffer
-
-# ── Page config ───────────────────────────────────────────────────────────────
+DATA_PATH = os.path.join(
+    os.path.dirname(__file__),
+    "all_attorneys_normalized.csv"
+)
 
 st.set_page_config(
-    page_title="Legal Research Audit Trail",
+    page_title="Ohio Roll of Attorneys",
+    page_icon="⚖️",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
-# ── Styles ────────────────────────────────────────────────────────────────────
+# ── STYLES ────────────────────────────────────────────────────────────────────
 #
-# Same palette pattern as the attorney lookup app:
+# Palette:
 #   #141414  page background
-#   #1d1d1d  sidebar / card background
-#   #252525  card hover / input background
+#   #1d1d1d  sidebar, card background
+#   #252525  card hover, input background
 #   #333333  borders
 #   #4a4a4a  muted borders
-#   #707070  muted text
+#   #707070  secondary / muted text
 #   #b0b0b0  body text
 #   #e8e8e8  primary text
-#   #f5f5f5  headings
+#   #f5f5f5  headings / names
 
 st.markdown("""
 <style>
@@ -112,10 +53,97 @@ html, body, [class*="css"] {
     background-color: #141414;
 }
 
+/* ── Header ── */
+.app-header {
+    text-align: center;
+    padding: 2.5rem 1rem 1rem;
+    border-bottom: 1px solid #333333;
+    margin-bottom: 2rem;
+}
+.app-header h1 {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: 2.6rem;
+    font-weight: 700;
+    color: #f5f5f5;
+    letter-spacing: 0.02em;
+    margin: 0 0 0.3rem;
+    line-height: 1.15;
+}
+.app-header .subtitle {
+    font-size: 0.9rem;
+    font-weight: 300;
+    font-style: italic;
+    color: #707070;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+.app-header .rule {
+    width: 40px;
+    height: 1px;
+    background: #4a4a4a;
+    margin: 1rem auto 0.5rem;
+}
+
+/* ── About block ── */
+.about-block {
+    background: #1d1d1d;
+    border: 1px solid #333333;
+    border-radius: 2px;
+    padding: 1.4rem 1.8rem;
+    margin-bottom: 2rem;
+    display: flex;
+    gap: 3rem;
+    flex-wrap: wrap;
+}
+.about-intro {
+    flex: 2;
+    min-width: 220px;
+}
+.about-intro p {
+    font-size: 0.88rem;
+    color: #707070;
+    line-height: 1.8;
+    margin: 0;
+    font-style: italic;
+}
+.about-fields {
+    flex: 3;
+    min-width: 280px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.8rem 2.5rem;
+    align-content: flex-start;
+}
+.field-item {
+    min-width: 180px;
+}
+.field-name {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #b0b0b0;
+    margin-bottom: 0.15rem;
+}
+.field-desc {
+    font-size: 0.82rem;
+    color: #4a4a4a;
+    line-height: 1.5;
+}
+
 /* ── Sidebar ── */
 [data-testid="stSidebar"] {
     background-color: #1d1d1d;
     border-right: 1px solid #333333;
+}
+[data-testid="stSidebar"] .sidebar-label {
+    font-family: 'Playfair Display', serif;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: #707070;
+    margin-bottom: 0.3rem;
 }
 [data-testid="stSidebar"] [data-testid="stTextInput"] input {
     border: 1px solid #333333 !important;
@@ -127,191 +155,21 @@ html, body, [class*="css"] {
 }
 [data-testid="stSidebar"] [data-testid="stTextInput"] input:focus {
     border-color: #b0b0b0 !important;
-    box-shadow: none !important;
+    box-shadow: 0 0 0 2px rgba(176,176,176,0.12) !important;
 }
 
-/* ── Inputs (main area) ── */
-[data-testid="stTextInput"] input,
-[data-testid="stTextArea"] textarea {
-    border: 1px solid #333333 !important;
-    border-radius: 2px !important;
-    background: #1d1d1d !important;
-    color: #e8e8e8 !important;
-    font-family: 'Source Serif 4', serif !important;
-    font-size: 0.92rem !important;
-}
-[data-testid="stTextInput"] input:focus,
-[data-testid="stTextArea"] textarea:focus {
-    border-color: #b0b0b0 !important;
-    box-shadow: none !important;
-}
-
-/* ── Selectbox ── */
-[data-testid="stSelectbox"] > div > div {
-    border: 1px solid #333333 !important;
-    border-radius: 2px !important;
-    background: #1d1d1d !important;
-    color: #e8e8e8 !important;
-}
-
-/* ── Buttons ── */
-[data-testid="stButton"] button {
-    background-color: #1d1d1d !important;
-    color: #e8e8e8 !important;
-    border: 1px solid #4a4a4a !important;
-    border-radius: 2px !important;
-    font-family: 'Source Serif 4', serif !important;
-    font-size: 0.88rem !important;
-    letter-spacing: 0.03em !important;
-}
-[data-testid="stButton"] button:hover {
-    border-color: #b0b0b0 !important;
-    background-color: #252525 !important;
-}
-
-/* ── Download button ── */
-[data-testid="stDownloadButton"] button {
-    background-color: #1d1d1d !important;
-    color: #e8e8e8 !important;
-    border: 1px solid #4a4a4a !important;
-    border-radius: 2px !important;
-    font-family: 'Source Serif 4', serif !important;
-    font-size: 0.88rem !important;
-}
-[data-testid="stDownloadButton"] button:hover {
-    border-color: #b0b0b0 !important;
-    background-color: #252525 !important;
-}
-
-/* ── Checkbox ── */
-[data-testid="stCheckbox"] label p {
-    color: #b0b0b0 !important;
-    font-size: 0.88rem !important;
-}
-
-/* ── Alert / info ── */
-[data-testid="stAlert"] {
-    background-color: #1d1d1d !important;
-    border-color: #333333 !important;
-    color: #b0b0b0 !important;
-}
-
-hr { border-color: #333333; }
-
-/* ── Landing ── */
-.landing {
-    max-width: 580px;
-    margin: 4rem auto 3rem;
-    text-align: center;
-}
-.landing h1 {
-    font-family: 'Playfair Display', Georgia, serif;
-    font-size: 2.5rem;
-    font-weight: 700;
-    color: #f5f5f5;
-    line-height: 1.15;
-    margin-bottom: 1rem;
-}
-.landing .rule {
-    width: 36px;
-    height: 1px;
-    background: #4a4a4a;
-    margin: 1.2rem auto;
-}
-.landing p {
-    font-size: 0.95rem;
-    color: #707070;
-    line-height: 1.75;
-    margin-bottom: 0.5rem;
-    font-weight: 300;
-}
-.landing .pills {
-    display: flex;
-    justify-content: center;
-    gap: 0.5rem;
-    flex-wrap: wrap;
-    margin-top: 1.4rem;
-}
-.landing .pill {
-    font-size: 0.72rem;
-    font-weight: 400;
-    letter-spacing: 0.07em;
-    text-transform: uppercase;
-    color: #707070;
-    border: 1px solid #333333;
-    padding: 0.25rem 0.8rem;
-    border-radius: 100px;
-}
-
-/* ── Section label ── */
-.section-label {
-    font-size: 0.68rem;
-    font-weight: 400;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: #4a4a4a;
-    border-bottom: 1px solid #333333;
-    padding-bottom: 0.5rem;
-    margin-bottom: 1.2rem;
-    margin-top: 0.5rem;
-}
-
-/* ── Session created banner ── */
-.created-banner {
-    background: #1d1d1d;
-    border: 1px solid #333333;
-    border-left: 3px solid #e8e8e8;
-    border-radius: 2px;
-    padding: 1.4rem 1.6rem;
-    margin-bottom: 2rem;
-}
-.created-banner .cb-check {
-    font-size: 0.72rem;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: #707070;
-    margin-bottom: 0.5rem;
-}
-.created-banner .cb-title {
-    font-family: 'Playfair Display', serif;
-    font-size: 1.4rem;
-    font-weight: 700;
-    color: #f5f5f5;
-    margin-bottom: 0.4rem;
-}
-.created-banner .cb-meta {
+/* ── Results meta ── */
+.result-meta {
     font-size: 0.85rem;
+    font-style: italic;
     color: #707070;
-    line-height: 1.6;
-}
-
-/* ── Session header ── */
-.session-header {
-    padding-bottom: 1.2rem;
-    margin-bottom: 2rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
     border-bottom: 1px solid #333333;
 }
-.session-header .sh-matter {
-    font-family: 'Playfair Display', serif;
-    font-size: 1.9rem;
-    font-weight: 700;
-    color: #f5f5f5;
-    margin-bottom: 0.3rem;
-    line-height: 1.2;
-}
-.session-header .sh-question {
-    font-size: 0.9rem;
-    color: #707070;
-    font-style: italic;
-    margin-bottom: 0.2rem;
-}
-.session-header .sh-byline {
-    font-size: 0.78rem;
-    color: #4a4a4a;
-}
 
-/* ── Entry card ── */
-.entry-card {
+/* ── Record card ── */
+.record-card {
     background: #1d1d1d;
     border: 1px solid #333333;
     border-left: 3px solid #4a4a4a;
@@ -320,214 +178,324 @@ hr { border-color: #333333; }
     margin-bottom: 0.6rem;
     transition: border-left-color 0.15s ease, background 0.15s ease;
 }
-.entry-card:hover {
+.record-card:hover {
     border-left-color: #e8e8e8;
     background: #252525;
 }
-.entry-ts {
-    font-size: 0.72rem;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: #4a4a4a;
-    margin-bottom: 0.4rem;
-}
-.entry-search {
+.record-name {
     font-family: 'Playfair Display', serif;
-    font-size: 1.05rem;
+    font-size: 1.1rem;
     font-weight: 700;
     color: #f5f5f5;
-    margin-bottom: 0.35rem;
+    margin-bottom: 0.25rem;
 }
-.entry-meta {
-    font-size: 0.85rem;
+.record-meta {
+    font-size: 0.88rem;
     color: #b0b0b0;
-    line-height: 1.65;
+    line-height: 1.7;
 }
-.entry-label {
+.record-meta .label {
     font-style: italic;
     color: #707070;
     margin-right: 0.3rem;
 }
-
-/* ── Empty state ── */
-.empty-state {
-    text-align: center;
-    padding: 2.5rem 1rem;
-    border: 1px dashed #333333;
-    border-radius: 2px;
-    color: #4a4a4a;
-    font-size: 0.88rem;
+.record-meta .field {
+    margin-right: 1.5rem;
+}
+.record-note {
+    margin-top: 0.55rem;
+    padding: 0.4rem 0.75rem;
+    background: #252525;
+    border-left: 2px solid #4a4a4a;
+    font-size: 0.85rem;
     font-style: italic;
+    color: #b0b0b0;
+    border-radius: 1px;
+}
+.record-source {
+    display: inline-block;
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #707070;
+    border: 1px solid #333333;
+    padding: 0.12rem 0.5rem;
+    border-radius: 1px;
     margin-top: 0.5rem;
 }
+.orig-label {
+    opacity: 0.45;
+    font-size: 0.82em;
+}
+
+/* ── No results ── */
+.no-results {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: #707070;
+    font-style: italic;
+}
+.no-results .icon { font-size: 2rem; margin-bottom: 0.5rem; }
+
+/* ── Export button ── */
+[data-testid="stDownloadButton"] button {
+    background-color: #1d1d1d !important;
+    color: #e8e8e8 !important;
+    border: 1px solid #4a4a4a !important;
+    border-radius: 2px !important;
+    font-family: 'Source Serif 4', serif !important;
+    font-size: 0.85rem !important;
+    letter-spacing: 0.04em !important;
+}
+[data-testid="stDownloadButton"] button:hover {
+    background-color: #333333 !important;
+    border-color: #b0b0b0 !important;
+}
+
+/* ── Selectbox ── */
+[data-testid="stSelectbox"] > div > div {
+    border-color: #333333 !important;
+    background: #252525 !important;
+    border-radius: 2px !important;
+    color: #e8e8e8 !important;
+}
+
+/* ── Checkbox ── */
+[data-testid="stCheckbox"] label p {
+    font-size: 0.88rem !important;
+    color: #b0b0b0 !important;
+}
+
+/* ── Slider ── */
+[data-testid="stSlider"] [data-testid="stThumbValue"] {
+    color: #e8e8e8 !important;
+}
+
+/* ── Info box ── */
+[data-testid="stAlert"] {
+    background-color: #1d1d1d !important;
+    border-color: #333333 !important;
+    color: #b0b0b0 !important;
+}
+
+hr { border-color: #333333; }
 </style>
 """, unsafe_allow_html=True)
 
-# ── Data ──────────────────────────────────────────────────────────────────────
+# ── DATA ──────────────────────────────────────────────────────────────────────
 
-sessions = load_sessions()
-session_names = list(sessions.keys())
+@st.cache_data
+def load_data(path):
+    df = pd.read_csv(path, dtype=str).fillna("")
+    df["Year_int"] = pd.to_numeric(df["Year"], errors="coerce")
+    return df
 
-# ── Sidebar ───────────────────────────────────────────────────────────────────
+df = load_data(DATA_PATH)
 
-with st.sidebar:
-    st.markdown("### Sessions")
-    st.markdown("---")
-    selected = st.selectbox("Load a session",
-                            ["— New session —"] + session_names,
-                            label_visibility="visible")
-    if selected != "— New session —":
-        st.markdown("---")
-        if st.button("Delete this session", use_container_width=True):
-            del sessions[selected]
-            save_sessions(sessions)
-            st.rerun()
+valid_years = df["Year_int"].dropna().astype(int)
+YEAR_MIN = int(valid_years.min())
+YEAR_MAX = int(valid_years.max())
+all_cities = sorted(df["Residence"].replace("", pd.NA).dropna().unique())
 
-# ── New session ───────────────────────────────────────────────────────────────
+# ── HEADER ───────────────────────────────────────────────────────────────────
 
-if selected == "— New session —":
+st.markdown("""
+<div class="app-header">
+    <div class="subtitle">Supreme Court of Ohio</div>
+    <h1>Roll of Attorneys</h1>
+    <div class="rule"></div>
+    <div class="subtitle">Patron Lookup</div>
+</div>
+""", unsafe_allow_html=True)
 
-    st.markdown("""
-    <div class="landing">
-        <h1>Legal Research<br>Audit Trail</h1>
-        <div class="rule"></div>
-        <p>A structured log for every search you run —
-        what you searched, where, what you found, and why it mattered.</p>
-        <p>Each session ties to a matter or research question
-        and exports as a formatted PDF memo.</p>
-        <div class="pills">
-            <span class="pill">Track search strings</span>
-            <span class="pill">Log sources found</span>
-            <span class="pill">Note relevance</span>
-            <span class="pill">Export to PDF</span>
+# ── ABOUT BLOCK ───────────────────────────────────────────────────────────────
+
+st.markdown("""
+<div class="about-block">
+    <div class="about-intro">
+        <p>
+            This tool searches the Ohio Supreme Court Roll of Attorneys,
+            transcribed from the original admission ledgers. Records span
+            1917&ndash;1971 across two ledger books. Use the filters on the
+            left to search by name, city, or year of admission. Results can
+            be exported as a CSV for further research.
+        </p>
+    </div>
+    <div class="about-fields">
+        <div class="field-item">
+            <div class="field-name">Name</div>
+            <div class="field-desc">Attorney name as recorded in the ledger at time of admission.</div>
+        </div>
+        <div class="field-item">
+            <div class="field-name">Admitted</div>
+            <div class="field-desc">Date the attorney was admitted to the Ohio bar.</div>
+        </div>
+        <div class="field-item">
+            <div class="field-name">Residence</div>
+            <div class="field-desc">City of residence at time of admission, normalized from the original transcription.</div>
+        </div>
+        <div class="field-item">
+            <div class="field-name">As written</div>
+            <div class="field-desc">Original transcribed value when it differs from the normalized city name.</div>
+        </div>
+        <div class="field-item">
+            <div class="field-name">Notes</div>
+            <div class="field-desc">Archival annotations from the ledger — disbarments, restorations, transfers, and other remarks.</div>
+        </div>
+        <div class="field-item">
+            <div class="field-name">Source</div>
+            <div class="field-desc">Which ledger book the record was transcribed from (Book 4 or Book 5).</div>
         </div>
     </div>
-    """, unsafe_allow_html=True)
+</div>
+""", unsafe_allow_html=True)
 
-    st.markdown('<div class="section-label">Start a new session</div>', unsafe_allow_html=True)
+# ── SIDEBAR FILTERS ───────────────────────────────────────────────────────────
 
-    col1, col2 = st.columns(2)
-    with col1:
-        matter     = st.text_input("Matter / Case name",
-                                   placeholder="e.g. Smith v. Jones (2024)")
-        researcher = st.text_input("Researcher name", placeholder="Your name")
-    with col2:
-        question = st.text_area("Research question", height=114,
-                                placeholder="e.g. Whether a non-compete clause is enforceable under Ohio law when...")
+with st.sidebar:
+    st.markdown("### Search & Filter")
+    st.markdown("---")
+
+    st.markdown('<div class="sidebar-label">Name</div>', unsafe_allow_html=True)
+    name_query = st.text_input(
+        "Name", label_visibility="collapsed",
+        placeholder="e.g. Anderson, Charles..."
+    )
 
     st.markdown("")
-    if st.button("Create Session"):
-        if matter and question and researcher:
-            sessions[matter] = {
-                "matter_name":       matter,
-                "research_question": question,
-                "researcher_name":   researcher,
-                "created":           datetime.now().strftime("%Y-%m-%d %H:%M"),
-                "entries":           []
-            }
-            save_sessions(sessions)
-            st.session_state["just_created"] = matter
-            st.rerun()
-        else:
-            st.warning("Please fill in all three fields.")
+    st.markdown('<div class="sidebar-label">City / Residence</div>', unsafe_allow_html=True)
+    city_options = ["— Any city —"] + all_cities
+    city_select = st.selectbox("City", city_options, label_visibility="collapsed")
 
-# ── Active session ────────────────────────────────────────────────────────────
-
-else:
-    session = sessions[selected]
-
-    # Created banner — shown once right after creation
-    if st.session_state.get("just_created") == selected:
-        q = session["research_question"]
-        q_preview = q[:110] + "…" if len(q) > 110 else q
-        st.markdown(
-            '<div class="created-banner">'
-            '<div class="cb-check">&#10003; &nbsp;Session created</div>'
-            '<div class="cb-title">' + session["matter_name"] + '</div>'
-            '<div class="cb-meta">'
-            + q_preview + '<br>'
-            + session["researcher_name"] + ' &nbsp;&middot;&nbsp; ' + session["created"] +
-            '</div></div>',
-            unsafe_allow_html=True
+    st.markdown("")
+    st.markdown('<div class="sidebar-label">Year of Admission</div>', unsafe_allow_html=True)
+    use_year_filter = st.checkbox("Filter by year range", value=False)
+    if use_year_filter:
+        year_range = st.slider(
+            "Year range", YEAR_MIN, YEAR_MAX,
+            (YEAR_MIN, YEAR_MAX), step=1,
+            label_visibility="collapsed"
         )
-        del st.session_state["just_created"]
+    else:
+        year_range = (YEAR_MIN, YEAR_MAX)
 
-    # Session header
+    st.markdown("")
+    st.markdown('<div class="sidebar-label">Source</div>', unsafe_allow_html=True)
+    source_select = st.selectbox(
+        "Source", ["Both books", "Book 4 only", "Book 5 only"],
+        label_visibility="collapsed"
+    )
+
+    st.markdown("")
+    notes_only = st.checkbox("Only records with notes", value=False)
+
+    st.markdown("---")
     st.markdown(
-        '<div class="session-header">'
-        '<div class="sh-matter">' + session["matter_name"] + '</div>'
-        '<div class="sh-question">' + session["research_question"] + '</div>'
-        '<div class="sh-byline">'
-        + session["researcher_name"] + ' &nbsp;&middot;&nbsp; Started ' + session["created"] +
-        '</div></div>',
+        '<div style="font-size:0.78rem;color:#4a4a4a;font-style:italic;">'
+        + str(len(df)) + ' total records &middot; Book 4 &amp; Book 5'
+        + '</div>',
         unsafe_allow_html=True
     )
 
-    # Log a search
-    st.markdown('<div class="section-label">Log a search</div>', unsafe_allow_html=True)
+# ── FILTERING ─────────────────────────────────────────────────────────────────
 
-    col1, col2 = st.columns(2)
-    with col1:
-        search_string = st.text_input("Search string",
-                                      placeholder='e.g. "non-compete" /s enforceable /p Ohio')
-        database      = st.selectbox("Database", DATABASES)
-    with col2:
-        sources_found  = st.text_area("Sources / results noted", height=100,
-                                      placeholder="Case names, citations, anything worth noting...")
-        relevance_note = st.text_area("Relevance note", height=100,
-                                      placeholder="Why kept, why ruled out, what to follow up...")
+results = df.copy()
 
-    st.markdown("")
-    if st.button("Add Entry"):
-        if search_string:
-            session["entries"].append({
-                "timestamp":      datetime.now().strftime("%Y-%m-%d %H:%M"),
-                "search_string":  search_string,
-                "database":       database,
-                "sources_found":  sources_found,
-                "relevance_note": relevance_note,
-            })
-            save_sessions(sessions)
-            st.toast("Entry logged", icon="✓")
-            st.rerun()
-        else:
-            st.warning("Enter a search string before adding an entry.")
+if name_query.strip():
+    q = name_query.strip().lower()
+    results = results[results["Name"].str.lower().str.contains(q, na=False)]
 
-    # Search log
-    st.markdown("")
-    n = len(session["entries"])
-    label = str(n) + " entr" + ("ies" if n != 1 else "y")
-    st.markdown('<div class="section-label">Search log &mdash; ' + label + '</div>',
-                unsafe_allow_html=True)
+if city_select != "— Any city —":
+    results = results[results["Residence"] == city_select]
 
-    if not session["entries"]:
-        st.markdown(
-            '<div class="empty-state">No searches logged yet. Add your first entry above.</div>',
-            unsafe_allow_html=True
-        )
+if use_year_filter:
+    results = results[
+        (results["Year_int"] >= year_range[0]) &
+        (results["Year_int"] <= year_range[1])
+    ]
+
+if source_select == "Book 4 only":
+    results = results[results["Source"] == "Book 4"]
+elif source_select == "Book 5 only":
+    results = results[results["Source"] == "Book 5"]
+
+if notes_only:
+    results = results[results["Notes"] != ""]
+
+# ── RESULTS HEADER + EXPORT ───────────────────────────────────────────────────
+
+count = len(results)
+col_results, col_export = st.columns([6, 1])
+
+with col_results:
+    any_filter = name_query or city_select != "— Any city —" or use_year_filter or notes_only
+    if any_filter:
+        plural = "s" if count != 1 else ""
+        result_text = "No records found" if count == 0 else str(count) + " record" + plural + " found"
     else:
-        for e in reversed(session["entries"]):
-            src  = e["sources_found"]  or "None noted"
-            note = e["relevance_note"] or "—"
-            st.markdown(
-                '<div class="entry-card">'
-                '<div class="entry-ts">' + e["timestamp"] + ' &nbsp;&middot;&nbsp; ' + e["database"] + '</div>'
-                '<div class="entry-search">' + e["search_string"] + '</div>'
-                '<div class="entry-meta">'
-                '<span class="entry-label">Sources</span>' + src + '<br>'
-                '<span class="entry-label">Note</span>' + note +
-                '</div></div>',
-                unsafe_allow_html=True
-            )
+        result_text = "Showing all " + str(count) + " records — use the filters to search."
+    st.markdown('<div class="result-meta">' + result_text + '</div>', unsafe_allow_html=True)
 
-        # Export
-        st.markdown("")
-        st.markdown('<div class="section-label">Export</div>', unsafe_allow_html=True)
-        pdf = generate_pdf(session)
-        fname = session["matter_name"].replace(" ", "_") + "_research_memo.pdf"
+with col_export:
+    if count > 0:
+        export_cols = ["Name", "Date of Admission", "Year", "Residence",
+                       "Residence_Original", "Notes", "Source"]
+        csv_bytes = results[export_cols].to_csv(index=False).encode("utf-8")
         st.download_button(
-            "Download Research Memo (PDF)",
-            data=pdf,
-            file_name=fname,
-            mime="application/pdf",
+            label="Export CSV",
+            data=csv_bytes,
+            file_name="attorneys_results.csv",
+            mime="text/csv",
         )
+
+# ── RECORD DISPLAY ────────────────────────────────────────────────────────────
+
+MAX_DISPLAY = 500
+
+if count == 0:
+    st.markdown(
+        '<div class="no-results">'
+        '<div class="icon">&#9878;</div>'
+        '<div>No records match your search.</div>'
+        '<div style="font-size:0.8rem;margin-top:0.3rem;">'
+        'Try broadening the name search or adjusting the filters.'
+        '</div></div>',
+        unsafe_allow_html=True
+    )
+else:
+    if count > MAX_DISPLAY:
+        st.info(
+            "Showing the first " + str(MAX_DISPLAY) + " of " + str(count) + " results. "
+            "Refine your search or use Export CSV to get the full set."
+        )
+
+    for _, row in results.head(MAX_DISPLAY).iterrows():
+        name      = row["Name"]              or "—"
+        date      = row["Date of Admission"] or "—"
+        city      = row["Residence"]         or row["Residence_Original"] or "—"
+        city_orig = row["Residence_Original"]
+        notes     = row["Notes"]
+        source    = row["Source"]
+
+        if city_orig and city_orig != city and city_orig.lower() not in city.lower():
+            city_display = city + ' <span class="orig-label">(as written: ' + city_orig + ')</span>'
+        else:
+            city_display = city
+
+        note_block = ""
+        if notes:
+            note_block = '<div class="record-note">&#128221; ' + notes + '</div>'
+
+        card = (
+            '<div class="record-card">'
+              '<div class="record-name">' + name + '</div>'
+              '<div class="record-meta">'
+                '<span class="field"><span class="label">Admitted</span>' + date + '</span>'
+                '<span class="field"><span class="label">Residence</span>' + city_display + '</span>'
+              '</div>'
+              + note_block +
+              '<div><span class="record-source">' + source + '</span></div>'
+            '</div>'
+        )
+
+        st.markdown(card, unsafe_allow_html=True)
