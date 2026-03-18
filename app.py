@@ -1,6 +1,6 @@
 """
 Ohio Supreme Court — Roll of Attorneys
-Lawyer lookup tool.
+Patron lookup tool for the Ledger Project.
 
 Run with:
     streamlit run app.py
@@ -29,7 +29,7 @@ st.set_page_config(
 
 # ── STYLES ────────────────────────────────────────────────────────────────────
 #
-# Palette:
+# Palette (off-black / off-white — no pure #000 or #fff):
 #   #141414  page background
 #   #1d1d1d  sidebar, card background
 #   #252525  card hover, input background
@@ -53,7 +53,7 @@ html, body, [class*="css"] {
     background-color: #141414;
 }
 
-/* ── Header ── */
+/* Header */
 .app-header {
     text-align: center;
     padding: 2.5rem 1rem 1rem;
@@ -84,54 +84,7 @@ html, body, [class*="css"] {
     margin: 1rem auto 0.5rem;
 }
 
-/* ── About block ── */
-.about-block {
-    background: #1d1d1d;
-    border: 1px solid #333333;
-    border-radius: 2px;
-    padding: 1.4rem 1.8rem;
-    margin-bottom: 2rem;
-    display: flex;
-    gap: 3rem;
-    flex-wrap: wrap;
-}
-.about-intro {
-    flex: 2;
-    min-width: 220px;
-}
-.about-intro p {
-    font-size: 0.88rem;
-    color: #707070;
-    line-height: 1.8;
-    margin: 0;
-    font-style: italic;
-}
-.about-fields {
-    flex: 3;
-    min-width: 280px;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.8rem 2.5rem;
-    align-content: flex-start;
-}
-.field-item {
-    min-width: 180px;
-}
-.field-name {
-    font-size: 0.7rem;
-    font-weight: 700;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: #b0b0b0;
-    margin-bottom: 0.15rem;
-}
-.field-desc {
-    font-size: 0.82rem;
-    color: #4a4a4a;
-    line-height: 1.5;
-}
-
-/* ── Sidebar ── */
+/* Sidebar */
 [data-testid="stSidebar"] {
     background-color: #1d1d1d;
     border-right: 1px solid #333333;
@@ -158,7 +111,7 @@ html, body, [class*="css"] {
     box-shadow: 0 0 0 2px rgba(176,176,176,0.12) !important;
 }
 
-/* ── Results meta ── */
+/* Results meta */
 .result-meta {
     font-size: 0.85rem;
     font-style: italic;
@@ -168,7 +121,7 @@ html, body, [class*="css"] {
     border-bottom: 1px solid #333333;
 }
 
-/* ── Record card ── */
+/* Record card */
 .record-card {
     background: #1d1d1d;
     border: 1px solid #333333;
@@ -228,7 +181,7 @@ html, body, [class*="css"] {
     font-size: 0.82em;
 }
 
-/* ── No results ── */
+/* No results */
 .no-results {
     text-align: center;
     padding: 3rem 1rem;
@@ -237,7 +190,7 @@ html, body, [class*="css"] {
 }
 .no-results .icon { font-size: 2rem; margin-bottom: 0.5rem; }
 
-/* ── Export button ── */
+/* Export button */
 [data-testid="stDownloadButton"] button {
     background-color: #1d1d1d !important;
     color: #e8e8e8 !important;
@@ -252,7 +205,7 @@ html, body, [class*="css"] {
     border-color: #b0b0b0 !important;
 }
 
-/* ── Selectbox ── */
+/* Selectbox */
 [data-testid="stSelectbox"] > div > div {
     border-color: #333333 !important;
     background: #252525 !important;
@@ -260,18 +213,18 @@ html, body, [class*="css"] {
     color: #e8e8e8 !important;
 }
 
-/* ── Checkbox ── */
+/* Checkbox */
 [data-testid="stCheckbox"] label p {
     font-size: 0.88rem !important;
     color: #b0b0b0 !important;
 }
 
-/* ── Slider ── */
+/* Slider */
 [data-testid="stSlider"] [data-testid="stThumbValue"] {
     color: #e8e8e8 !important;
 }
 
-/* ── Info box ── */
+/* Info box */
 [data-testid="stAlert"] {
     background-color: #1d1d1d !important;
     border-color: #333333 !important;
@@ -304,49 +257,7 @@ st.markdown("""
     <div class="subtitle">Supreme Court of Ohio</div>
     <h1>Roll of Attorneys</h1>
     <div class="rule"></div>
-    <div class="subtitle">Lawyer Lookup</div>
-</div>
-""", unsafe_allow_html=True)
-
-# ── ABOUT BLOCK ───────────────────────────────────────────────────────────────
-
-st.markdown("""
-<div class="about-block">
-    <div class="about-intro">
-        <p>
-            This tool searches the Ohio Supreme Court Roll of Attorneys,
-            transcribed from the original admission ledgers. Records span
-            1917&ndash;1971 across two ledger books. Use the filters on the
-            left to search by name, city, or year of admission. Results can
-            be exported as a CSV for further research.
-        </p>
-    </div>
-    <div class="about-fields">
-        <div class="field-item">
-            <div class="field-name">Name</div>
-            <div class="field-desc">Attorney name as recorded in the ledger at time of admission.</div>
-        </div>
-        <div class="field-item">
-            <div class="field-name">Admitted</div>
-            <div class="field-desc">Date the attorney was admitted to the Ohio bar.</div>
-        </div>
-        <div class="field-item">
-            <div class="field-name">Residence</div>
-            <div class="field-desc">City of residence at time of admission, normalized from the original transcription.</div>
-        </div>
-        <div class="field-item">
-            <div class="field-name">As written</div>
-            <div class="field-desc">Original transcribed value when it differs from the normalized city name.</div>
-        </div>
-        <div class="field-item">
-            <div class="field-name">Notes</div>
-            <div class="field-desc">Archival annotations from the ledger — disbarments, restorations, transfers, and other remarks.</div>
-        </div>
-        <div class="field-item">
-            <div class="field-name">Source</div>
-            <div class="field-desc">Which ledger book the record was transcribed from (Book 4 or Book 5).</div>
-        </div>
-    </div>
+    <div class="subtitle">Ledger Project &mdash; Patron Lookup</div>
 </div>
 """, unsafe_allow_html=True)
 
@@ -382,7 +293,7 @@ with st.sidebar:
     st.markdown("")
     st.markdown('<div class="sidebar-label">Source</div>', unsafe_allow_html=True)
     source_select = st.selectbox(
-        "Source", ["Both books", "Book 4 only", "Book 5 only"],
+        "Source", ["All books", "Book 4 only", "Book 5 only", "Book 7 only"],
         label_visibility="collapsed"
     )
 
@@ -392,7 +303,7 @@ with st.sidebar:
     st.markdown("---")
     st.markdown(
         '<div style="font-size:0.78rem;color:#4a4a4a;font-style:italic;">'
-        + str(len(df)) + ' total records &middot; Book 4 &amp; Book 5'
+        + str(len(df)) + ' total records &middot; Book 4, Book 5 &amp; Book 7'
         + '</div>',
         unsafe_allow_html=True
     )
@@ -418,6 +329,8 @@ if source_select == "Book 4 only":
     results = results[results["Source"] == "Book 4"]
 elif source_select == "Book 5 only":
     results = results[results["Source"] == "Book 5"]
+elif source_select == "Book 7 only":
+    results = results[results["Source"] == "Book 7"]
 
 if notes_only:
     results = results[results["Notes"] != ""]
