@@ -1,6 +1,6 @@
 """
 Ohio Supreme Court — Roll of Attorneys
-Patron lookup tool.
+Lawyer lookup tool.
 
 Run with:
     streamlit run app.py
@@ -304,7 +304,7 @@ st.markdown("""
     <div class="subtitle">Supreme Court of Ohio</div>
     <h1>Roll of Attorneys</h1>
     <div class="rule"></div>
-    <div class="subtitle">Patron Lookup</div>
+    <div class="subtitle">Lawyer Lookup</div>
 </div>
 """, unsafe_allow_html=True)
 
