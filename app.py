@@ -28,17 +28,6 @@ st.set_page_config(
 )
 
 # ── STYLES ────────────────────────────────────────────────────────────────────
-#
-# Palette (off-black / off-white — no pure #000 or #fff):
-#   #141414  page background
-#   #1d1d1d  sidebar, card background
-#   #252525  card hover, input background
-#   #333333  borders
-#   #4a4a4a  muted borders
-#   #707070  secondary / muted text
-#   #b0b0b0  body text
-#   #e8e8e8  primary text
-#   #f5f5f5  headings / names
 
 st.markdown("""
 <style>
@@ -293,7 +282,15 @@ with st.sidebar:
     st.markdown("")
     st.markdown('<div class="sidebar-label">Source</div>', unsafe_allow_html=True)
     source_select = st.selectbox(
-        "Source", ["All books", "Book 4 only", "Book 5 only", "Book 7 only"],
+        "Source",
+        [
+            "All books",
+            "Book 4 only",
+            "Book 5 only",
+            "Book 7 only",
+            "Book 8 only",
+            "Book 9 only",
+        ],
         label_visibility="collapsed"
     )
 
@@ -303,7 +300,7 @@ with st.sidebar:
     st.markdown("---")
     st.markdown(
         '<div style="font-size:0.78rem;color:#4a4a4a;font-style:italic;">'
-        + str(len(df)) + ' total records &middot; Book 4, Book 5 &amp; Book 7'
+        + str(len(df)) + ' total records &middot; Books 4, 5, 7, 8 &amp; 9'
         + '</div>',
         unsafe_allow_html=True
     )
@@ -331,6 +328,10 @@ elif source_select == "Book 5 only":
     results = results[results["Source"] == "Book 5"]
 elif source_select == "Book 7 only":
     results = results[results["Source"] == "Book 7"]
+elif source_select == "Book 8 only":
+    results = results[results["Source"] == "Book 8"]
+elif source_select == "Book 9 only":
+    results = results[results["Source"] == "Book 9"]
 
 if notes_only:
     results = results[results["Notes"] != ""]
