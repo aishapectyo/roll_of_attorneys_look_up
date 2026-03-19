@@ -257,7 +257,7 @@ st.markdown("""
     <div class="subtitle">Supreme Court of Ohio</div>
     <h1>Roll of Attorneys</h1>
     <div class="rule"></div>
-    <div class="subtitle">Ledger Project &mdash; Patron Lookup</div>
+    <div class="subtitle">Ohio Lawyer Lookup</div>
 </div>
 """, unsafe_allow_html=True)
 
