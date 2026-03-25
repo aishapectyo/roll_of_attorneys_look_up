@@ -290,6 +290,7 @@ with st.sidebar:
             "Book 7 only",
             "Book 8 only",
             "Book 9 only",
+            "Book 10 only",
         ],
         label_visibility="collapsed"
     )
@@ -300,7 +301,7 @@ with st.sidebar:
     st.markdown("---")
     st.markdown(
         '<div style="font-size:0.78rem;color:#4a4a4a;font-style:italic;">'
-        + str(len(df)) + ' total records &middot; Books 4, 5, 7, 8 &amp; 9'
+        + str(len(df)) + ' total records &middot; Books 4, 5, 7, 8, 9 &amp; 10'
         + '</div>',
         unsafe_allow_html=True
     )
@@ -332,6 +333,8 @@ elif source_select == "Book 8 only":
     results = results[results["Source"] == "Book 8"]
 elif source_select == "Book 9 only":
     results = results[results["Source"] == "Book 9"]
+elif source_select == "Book 10 only":
+    results = results[results["Source"] == "Book 10"]
 
 if notes_only:
     results = results[results["Notes"] != ""]
