@@ -285,6 +285,8 @@ with st.sidebar:
         "Source",
         [
             "All books",
+            "Book 1 only",
+            "Book 2 only",
             "Book 4 only",
             "Book 5 only",
             "Book 7 only",
@@ -301,7 +303,7 @@ with st.sidebar:
     st.markdown("---")
     st.markdown(
         '<div style="font-size:0.78rem;color:#4a4a4a;font-style:italic;">'
-        + str(len(df)) + ' total records &middot; Books 4, 5, 7, 8, 9 &amp; 10'
+        + str(len(df)) + ' total records &middot; Books 1, 2, 4, 5, 7, 8, 9 &amp; 10'
         + '</div>',
         unsafe_allow_html=True
     )
@@ -323,7 +325,11 @@ if use_year_filter:
         (results["Year_int"] <= year_range[1])
     ]
 
-if source_select == "Book 4 only":
+if source_select == "Book 1 only":
+    results = results[results["Source"] == "Book 1"]
+elif source_select == "Book 2 only":
+    results = results[results["Source"] == "Book 2"]
+elif source_select == "Book 4 only":
     results = results[results["Source"] == "Book 4"]
 elif source_select == "Book 5 only":
     results = results[results["Source"] == "Book 5"]
